@@ -1,0 +1,175 @@
+@api = http://localhost:4000/api/v1
+@phone = +919100000100
+@admin = PASTE_ADMIN_ACCESS_TOKEN
+@secretary = PASTE_SECRETARY_ACCESS_TOKEN
+@guard = PASTE_GUARD_ACCESS_TOKEN
+@head = PASTE_HEAD_ACCESS_TOKEN
+@member = PASTE_MEMBER_ACCESS_TOKEN
+@visitor = PASTE_VISITOR_ACCESS_TOKEN
+@society = PASTE_SOCIETY_ID
+@gate = PASTE_GATE_ID
+@guardId = PASTE_GUARD_ID
+@flat = PASTE_FLAT_ID
+@memberId = PASTE_MEMBER_ID
+@visit = PASTE_VISIT_ID
+@walkin = PASTE_WALKIN_VISIT_ID
+@guestType = PASTE_GUEST_TYPE_ID
+@qr = PASTE_QR_TOKEN
+
+### Send OTP (repeat with each account's number)
+POST {{api}}/auth/otp/request
+Content-Type: application/json
+
+{"phone":"{{phone}}"}
+
+### Verify OTP
+# @name verify
+POST {{api}}/auth/otp/verify
+Content-Type: application/json
+X-Device-Name: REST Client
+
+{"phone":"{{phone}}","code":"123456"}
+
+### Signup for a new phone only
+POST {{api}}/auth/signup
+Content-Type: application/json
+
+{"signupToken":"{{verify.response.body.data.signupToken}}","firstName":"Demo","dateOfBirth":"1994-01-01"}
+
+### Add a society as Platform Admin; assign Secretary by mobile; active immediately
+POST {{api}}/societies
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"name":"Garden Residency","address":"12 Main Road","city":"Ahmedabad","state":"Gujarat","country":"India","pincode":"380015","secretaryPhone":"+919100000101"}
+
+### List active societies
+GET {{api}}/admin/societies?status=APPROVED
+Authorization: Bearer {{admin}}
+
+### Add gate
+POST {{api}}/societies/{{society}}/gates
+Authorization: Bearer {{secretary}}
+Content-Type: application/json
+
+{"gateNumber":"1","name":"Main gate"}
+
+### Add Guard by mobile number; no prior account or approval
+POST {{api}}/societies/{{society}}/guards
+Authorization: Bearer {{secretary}}
+Content-Type: application/json
+
+{"phone":"+919100000102"}
+
+### Start duty
+POST {{api}}/societies/{{society}}/duty/start
+Authorization: Bearer {{guard}}
+Content-Type: application/json
+
+{"gateIds":["{{gate}}"]}
+
+### Add a home as its society Secretary; assign owner by mobile; active immediately
+POST {{api}}/societies/{{society}}/flats
+Authorization: Bearer {{secretary}}
+Content-Type: application/json
+
+{"wing":"A","flatNumber":"101","ownerPhone":"+919100000103"}
+
+### Find approved societies by name, location or PIN; combine terms and paginate
+GET {{api}}/societies/search?q=Ahmedabad%20380015&limit=5&page=1
+Authorization: Bearer {{visitor}}
+
+### List homes (already active after creation)
+GET {{api}}/societies/{{society}}/flats
+Authorization: Bearer {{secretary}}
+
+### Request home membership
+POST {{api}}/flats/{{flat}}/members/join
+Authorization: Bearer {{member}}
+Content-Type: application/json
+
+{"relation":"TENANT"}
+
+### Approve member
+POST {{api}}/flats/{{flat}}/members/{{memberId}}/approve
+Authorization: Bearer {{head}}
+
+### Lookup home
+POST {{api}}/societies/{{society}}/flats/lookup
+Authorization: Bearer {{visitor}}
+Content-Type: application/json
+
+{"wing":"A","flatNumber":"101"}
+
+### Guest types
+GET {{api}}/guest-types
+Authorization: Bearer {{visitor}}
+
+### Request visit
+POST {{api}}/visits
+Authorization: Bearer {{visitor}}
+Content-Type: application/json
+
+{"flatId":"{{flat}}","guestTypeId":"{{guestType}}","purpose":"Demo visit"}
+
+### Approve visit
+POST {{api}}/visits/{{visit}}/approve
+Authorization: Bearer {{head}}
+
+### Get visitor QR token
+GET {{api}}/visits/{{visit}}
+Authorization: Bearer {{visitor}}
+
+### Check in (repeat before checkout for QR_ALREADY_USED)
+POST {{api}}/scans/entry
+Authorization: Bearer {{guard}}
+Content-Type: application/json
+
+{"qrToken":"{{qr}}","gateId":"{{gate}}"}
+
+### Check out
+POST {{api}}/scans/exit
+Authorization: Bearer {{guard}}
+Content-Type: application/json
+
+{"qrToken":"{{qr}}","gateId":"{{gate}}"}
+
+### Visit history
+GET {{api}}/visits/mine?status=CHECKED_OUT
+Authorization: Bearer {{visitor}}
+
+### Create a walk-in
+POST {{api}}/societies/{{society}}/walkins
+Authorization: Bearer {{guard}}
+Content-Type: application/json
+
+{"phone":"+919880000001","name":"Demo guest","flatId":"{{flat}}","guestTypeId":"{{guestType}}","purpose":"Delivery"}
+
+### Approve walk-in
+POST {{api}}/visits/{{walkin}}/approve
+Authorization: Bearer {{head}}
+
+### Allow walk-in entry
+POST {{api}}/visits/{{walkin}}/allow-entry
+Authorization: Bearer {{guard}}
+Content-Type: application/json
+
+{"gateId":"{{gate}}"}
+
+### Walk-in exit
+POST {{api}}/visits/{{walkin}}/mark-exit
+Authorization: Bearer {{guard}}
+Content-Type: application/json
+
+{"gateId":"{{gate}}"}
+
+### Add a recurring pass for the seeded visitor
+POST {{api}}/flats/{{flat}}/passes
+Authorization: Bearer {{head}}
+Content-Type: application/json
+
+{"helperPhone":"+919100000105","guestTypeId":"{{guestType}}","daysOfWeek":[0,1,2,3,4,5,6],"startTime":"00:00","endTime":"23:59","validFrom":"2026-01-01"}
+
+### Get the helper's QR
+GET {{api}}/visits/today-passes
+Authorization: Bearer {{visitor}}
